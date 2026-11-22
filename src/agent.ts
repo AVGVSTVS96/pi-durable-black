@@ -15,7 +15,6 @@ import { conversationSearchExtension, searchHistoryTool } from "./search.ts";
 import { getWeatherTool, scheduleTool } from "./tools.ts";
 import { AccountCredentialStore, type CredentialVault } from "./credentials.ts";
 
-/** The Worker bindings this app reads. Extra bindings are ignored. */
 export interface AgentBindings {
   readonly ANTHROPIC_OAUTH_TOKEN?: unknown;
   readonly ANTHROPIC_API_KEY?: unknown;
@@ -27,32 +26,23 @@ export interface AgentBindings {
 
 const DEFAULT_MODEL = "claude-sonnet-5-5";
 
-const stringBinding = (value: unknown): string | undefined =>
-  typeof value === "string" && value.length > 0 ? value : undefined;
+const STRING_BINDINGS = [
+  "ANTHROPIC_OAUTH_TOKEN",
+  "ANTHROPIC_API_KEY",
+  "CLAUDE_CODE_DEVICE_ID",
+  "CLAUDE_CODE_ACCOUNT_UUID",
+  "PI_DURABLE_MODEL",
+] as const;
 
-/** Only string-valued bindings are visible to provider auth and identity lookup. */
 function readBindings(env: AgentBindings): Record<string, string | undefined> {
   const bindings: Record<string, string | undefined> = {};
-  for (const name of [
-    "ANTHROPIC_OAUTH_TOKEN",
-    "ANTHROPIC_API_KEY",
-    "CLAUDE_CODE_DEVICE_ID",
-    "CLAUDE_CODE_ACCOUNT_UUID",
-    "PI_DURABLE_MODEL",
-  ] as const) {
-    const value = stringBinding(env[name]);
-    if (value !== undefined) bindings[name] = value;
+  for (const name of STRING_BINDINGS) {
+    const value = env[name];
+    if (typeof value === "string" && value.length > 0) bindings[name] = value;
   }
   return bindings;
 }
 
-/**
- * Application-owned, platform-independent agent composition.
- *
- * Anthropic is the only provider. OAuth tokens are sent through pi-black's
- * Claude Code wire compatibility, so a Claude subscription credential works
- * from a Worker like it does from Pi.
- */
 export function createChatHarnessOptions(env: AgentBindings = {}): HarnessOptions {
   const bindings = readBindings(env);
   const credentials =
@@ -63,7 +53,6 @@ export function createChatHarnessOptions(env: AgentBindings = {}): HarnessOption
     ...(credentials === undefined ? {} : { credentials }),
     authContext: {
       env: async (name) => bindings[name],
-      // Workers have no filesystem; provider auth must come from bindings.
       fileExists: async () => false,
     },
   });
@@ -89,12 +78,9 @@ export function createChatHarnessOptions(env: AgentBindings = {}): HarnessOption
           "You are a concise assistant running inside a durable conversation. User messages may begin with a display name in brackets; treat it as speaker attribution.",
         { tag: false },
       ),
-      section(
-        "clock",
-        // Minute precision: finer values would append a system-prompt delta on every request.
-        () => `Current time: ${new Date().toISOString().slice(0, 16)}Z.`,
-        { tag: false },
-      ),
+      section("clock", () => `Current time: ${new Date().toISOString().slice(0, 16)}Z.`, {
+        tag: false,
+      }),
     ],
   });
   const registry = createRegistry();

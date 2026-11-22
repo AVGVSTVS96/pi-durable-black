@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "vitest"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    "vitest/expect-expect": ["error", { "assertFunctionNames": ["expect", "expectAlarm"] }]
+  },
+  "ignorePatterns": ["dist", "worker-configuration.d.ts"]
+}

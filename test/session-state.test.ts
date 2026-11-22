@@ -118,7 +118,7 @@ describe("session state", () => {
   it("rejects malformed view operations", () => {
     expect(() =>
       event({ type: "conversation.ops", conversationId: 1, ops: [["s", [], 1]] }),
-    ).toThrow();
+    ).toThrow("path is empty");
     expect(() => event({ type: "conversation.view", conversationId: 1, view: {} })).toThrow(
       "Conversation view payload is invalid",
     );

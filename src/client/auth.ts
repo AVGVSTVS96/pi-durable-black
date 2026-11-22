@@ -1,6 +1,5 @@
 const TOKEN_KEY = "pi-durable-token";
 
-/** Keeps a `?token=` from the first visit for this tab and removes it from the address bar. */
 export function bootstrapToken(): string | undefined {
   const url = new URL(window.location.href);
   const fromUrl = url.searchParams.get("token");

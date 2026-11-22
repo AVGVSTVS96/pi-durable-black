@@ -24,6 +24,10 @@ describe("API token gate", () => {
     expect(
       (await worker.fetch(create({ Authorization: "Bearer secret" }), fakeEnv("secret"))).status,
     ).toBe(201);
+    const withQuery = new Request("https://example.com/api/sessions?token=secret", {
+      method: "POST",
+    });
+    expect((await worker.fetch(withQuery, fakeEnv("secret"))).status).toBe(201);
   });
 
   it("does not gate static assets", async () => {

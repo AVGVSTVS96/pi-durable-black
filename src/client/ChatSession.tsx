@@ -138,7 +138,8 @@ export function ChatSession({ sessionId, username }: ChatSessionProps) {
     autoScrollFrameRef.current = requestAnimationFrame(step);
   };
 
-  useEffect(() => () => stopTyping(), [activeConversationId, isConnected]);
+  const releaseTyping = useEffectEvent(stopTyping);
+  useEffect(() => () => releaseTyping(), [activeConversationId, isConnected]);
 
   useLayoutEffect(() => {
     const transcript = transcriptRef.current;

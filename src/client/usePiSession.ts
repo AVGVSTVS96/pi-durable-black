@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { applyImmutable } from "@earendil-works/chord/delta";
 import {
@@ -63,9 +63,7 @@ export function usePiSession(
 ): PiSession {
   const [state, dispatch] = useReducer(sessionReducer, initialSessionState);
   const socketRef = useRef<PartySocket | null>(null);
-  const outboxRef = useRef<CommandOutbox | null>(null);
-  outboxRef.current ??= new CommandOutbox();
-  const outbox = outboxRef.current;
+  const [outbox] = useState(() => new CommandOutbox());
   const selectedConversationRef = useRef(initialConversationId ?? ROOT_CONVERSATION_ID);
   // A conversation's view as last received, to apply operations to, and the transcript the client holds, which keeps
   // entries that left the view's window and pages in older ones.

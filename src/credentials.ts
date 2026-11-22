@@ -4,17 +4,10 @@ import { refreshAnthropicOAuth } from "pi-black/oauth";
 
 const PROVIDER_ID = "anthropic";
 const STORAGE_KEY = "credentials";
-/** Refresh this far before expiry, matching pi-ai's own window. */
 const EXPIRY_SKEW_MS = 5 * 60 * 1000;
 
 type Credentials = Record<string, Credential>;
 
-/**
- * One Durable Object owns the Claude credential for the whole deployment.
- * Durable Objects run one request at a time, so a refresh (and the refresh
- * token rotation it causes) is serialized: two sessions can never spend the
- * same refresh token concurrently and invalidate each other.
- */
 export class CredentialVault extends DurableObject<Env> {
   #pending: Promise<Credential | undefined> | undefined;
 
@@ -55,11 +48,8 @@ export class CredentialVault extends DurableObject<Env> {
     const refresh = this.env.ANTHROPIC_OAUTH_REFRESH_TOKEN;
     const all: Credentials = {};
     if (access && refresh) {
-      // expires 0 makes the first read exchange the refresh token, which also
-      // validates it early instead of at an arbitrary future session start.
       all[PROVIDER_ID] = { type: "oauth", access, refresh, expires: 0 };
     } else if (access) {
-      // No refresh token: a static bearer token that pi-black still detects.
       all[PROVIDER_ID] = { type: "api_key", key: access };
     } else if (this.env.ANTHROPIC_API_KEY) {
       all[PROVIDER_ID] = { type: "api_key", key: this.env.ANTHROPIC_API_KEY };
@@ -69,8 +59,6 @@ export class CredentialVault extends DurableObject<Env> {
   }
 
   async #refresh(providerId: string): Promise<Credential | undefined> {
-    // Coalesce concurrent callers inside this instance; the object itself is
-    // already single-threaded across requests.
     this.#pending ??= this.#refreshOnce(providerId).finally(() => {
       this.#pending = undefined;
     });
@@ -95,7 +83,6 @@ export class CredentialVault extends DurableObject<Env> {
   }
 }
 
-/** `CredentialStore` backed by the singleton vault. */
 export class AccountCredentialStore implements CredentialStore {
   readonly #vault: DurableObjectStub<CredentialVault>;
 
@@ -111,10 +98,6 @@ export class AccountCredentialStore implements CredentialStore {
     return this.#vault.listCredentials();
   }
 
-  /**
-   * pi-ai calls `modify` only to persist an OAuth refresh. The vault owns the
-   * read-refresh-write, so the callback is intentionally not run here.
-   */
   modify(providerId: string): Promise<Credential | undefined> {
     return this.#vault.refresh(providerId);
   }
@@ -122,10 +105,4 @@ export class AccountCredentialStore implements CredentialStore {
   async delete(providerId: string): Promise<void> {
     await this.#vault.logout(providerId);
   }
-}
-
-export function credentialVault(env: Env): AccountCredentialStore | undefined {
-  return env.CREDENTIALS === undefined
-    ? undefined
-    : new AccountCredentialStore(env.CREDENTIALS.getByName("default"));
 }
