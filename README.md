@@ -1,82 +1,105 @@
-# pi-durable on Cloudflare
+# pi-durable-black
 
-A working example of [`@earendil-works/pi-durable`](https://www.npmjs.com/package/@earendil-works/pi-durable) running in a Cloudflare Durable Object.
+A Claude agent that stays alive: [`@earendil-works/pi-durable`](https://www.npmjs.com/package/@earendil-works/pi-durable) running in a Cloudflare Durable Object, with model calls routed through [`pi-black`](https://github.com/AVGVSTVS96/pi-black) so they use a Claude Max/Pro subscription instead of an API key.
 
-Start with the [Pi Durable announcement](https://earendil.com/posts/pi-durable/) for the ideas behind the harness. This repository shows one way to put those ideas into a small, usable web application.
+Everything a conversation does — model turns, tool calls, scheduling, forks, your own documents — is committed to the Durable Object's SQLite storage before it is shown. If the isolate dies mid-turn, the next request resumes the work. Sockets hibernate; alarms wake the object when scheduled work is due.
 
-Pi Durable is experimental, so its APIs may still change.
+This is a personal deployment, not a product. There is no multi-tenant isolation beyond one Durable Object per session, and no login UI for the app itself (see [Security](#security)).
 
-## What you can try
+## How it fits together
 
-- Create a shared chat session and open it in multiple browsers.
-- Run several conversations at once and fork a conversation from an earlier message.
-- Reconnect without losing committed transcripts or queued prompts.
-- Schedule one-time or recurring follow-ups.
-- Ask a search subagent about earlier conversations.
-- Open Activity to inspect live task ownership, waits, sleeps, tool calls, and background work while conversations run.
+```
+Browser ──WebSocket──▶ Worker ──▶ Session DO ──▶ pi-durable Harness
+                                        │              │
+                                        │              └── pi-ai Models ──▶ pi-black ──▶ api.anthropic.com
+                                        │
+                                        └── SQLite storage, alarms, hibernating sockets
 
-This is a sample, not a production service. It intentionally has no authentication or rate limiting.
+CredentialVault DO ── owns the Claude credential, refreshes it single-threaded
+```
 
-## Run it locally
+- `src/agent.ts` composes the models, tools, extensions, and default agent. Anthropic is the only provider; its OAuth auth is replaced with a Worker-safe implementation from `pi-black/oauth`, and the provider is wrapped with pi-black's Claude Code wire compatibility.
+- `src/credentials.ts` is a singleton Durable Object that holds the credential and refreshes it. Durable Objects handle one request at a time, so a refresh-token rotation can never race itself across sessions.
+- `src/session.ts` hosts the harness for one session: Durable Object SQLite storage, hibernating WebSockets, alarms, and view streaming.
+- `src/protocol.ts`, `src/client/` are the wire protocol and React client.
 
-You need Node.js 22.19 or newer, pnpm 11, and an OpenAI API key.
+## Requirements
+
+- Node.js 22.19 or newer, pnpm 11.
+- pi-black, pinned in `package.json` to a specific commit. Point the dependency at a local checkout (`link:../pi-black`) while working on both.
+- A Claude subscription credential: an OAuth access token, ideally with its refresh token.
+
+## Get the credential
+
+Sign in with Claude Code on a machine you control, then read the stored tokens:
+
+```sh
+jq -r '.claudeAiOauth.accessToken'  ~/.claude/.credentials.json
+jq -r '.claudeAiOauth.refreshToken' ~/.claude/.credentials.json
+```
+
+On macOS the record lives in the login Keychain (`security find-generic-password -s "Claude Code-credentials" -w`). If the access token is empty, Claude Code's background daemon is holding the refreshed value; run a Claude Code command first, or use `claude setup-token`.
+
+The Worker refreshes the access token itself when given the refresh token. With only an access token, calls stop working when it expires (a few hours).
+
+## Run locally
 
 ```sh
 pnpm install
-cp .dev.vars.example .dev.vars
-```
-
-Add your key to `.dev.vars`:
-
-```dotenv
-OPENAI_API_KEY=your-key
-```
-
-Then start the Worker and React client together:
-
-```sh
+cp .dev.vars.example .dev.vars   # fill in ANTHROPIC_OAUTH_TOKEN and ANTHROPIC_OAUTH_REFRESH_TOKEN
 pnpm dev
 ```
 
-Open the local URL printed by Vite, create a session, and send a message. Open the session URL in another browser to try the multiplayer flow.
-
-## Where to look
-
-The shortest path through the project is:
-
-- [`src/chat.ts`](src/chat.ts) defines the models, extensions, tools, and default agent.
-- [`src/session.ts`](src/session.ts) hosts the harness with Pi Durable's built-in Durable Object SQLite storage and connects it to Cloudflare's native hibernating WebSockets and alarms. Each socket watches one conversation's view (`Conversation.watch()`): the server sends its first value, then its changes as Chord operations, and pages older entries on request.
-- [`src/tools.ts`](src/tools.ts), [`src/schedule.ts`](src/schedule.ts), and [`src/search.ts`](src/search.ts) contain the example tools and tasks.
-- [`src/client/`](src/client/) is the React client. It applies the operations to each conversation's view, keeps the whole transcript with Pi Durable's `ConversationTranscript`, and renders the result: entries, and `pi.live` for the run, the streamed answer, tool progress, and failures.
-- [`test/`](test/) covers application flows including restart recovery, scheduling, forks, and inboxes. Pi Durable tests its built-in Cloudflare storage adapter inside a Durable Object itself.
-
-The code is the documentation for this integration. In particular, the tests are useful examples of restart behavior, scheduling, forks, and inboxes.
-
-## Commands
-
-```sh
-pnpm dev        # local development
-pnpm test       # test suite
-pnpm check      # formatting, types, build, and deploy dry run
-pnpm build      # production build
-pnpm preview    # preview the production build locally
-```
+Open the printed URL, create a session, send a message.
 
 ## Deploy
 
-Authenticate Wrangler, store the API key as a Worker secret, then deploy:
-
 ```sh
 pnpm exec wrangler login
-pnpm exec wrangler secret put OPENAI_API_KEY
+pnpm exec wrangler secret put ANTHROPIC_OAUTH_TOKEN
+pnpm exec wrangler secret put ANTHROPIC_OAUTH_REFRESH_TOKEN   # strongly recommended
 pnpm deploy
 ```
 
-Before exposing a deployment, add authentication, authorization, and rate limiting. Anyone who can reach this sample can create sessions that use your model credentials.
+Optional secrets: `CLAUDE_CODE_DEVICE_ID` and `CLAUDE_CODE_ACCOUNT_UUID` add the identity metadata Claude Code sends (pi-black reads them from `~/.claude.json` on a laptop); `PI_DURABLE_TOKEN` gates the API with a bearer token; `PI_DURABLE_MODEL` changes the default model.
 
-## Further reading
+The first model request makes the vault exchange the refresh token, so a bad credential fails immediately rather than at an arbitrary later time.
 
-- [Pi Durable announcement](https://earendil.com/posts/pi-durable/)
-- [pi-durable package documentation](https://github.com/earendil-works/pi/tree/main/packages/durable)
-- [pi-durable examples](https://github.com/earendil-works/pi/tree/main/packages/durable/test/examples)
-- [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
+## Security
+
+Anyone who can reach the Worker can spend your subscription quota. Pick one:
+
+- Put the Worker behind Cloudflare Access and let it authenticate every request (recommended).
+- Set `PI_DURABLE_TOKEN` and open the app once with `/?token=…`; the client keeps it in `sessionStorage` and sends it on the API and the WebSocket handshake.
+
+The Worker never returns the credential to the browser. The vault stores it in the Durable Object's storage, which is encrypted at rest by Cloudflare.
+
+## Operations
+
+- **Token refresh** happens in the vault when less than five minutes remain. A failed refresh surfaces as an `oauth` model error; the stored credential is kept so a later request can retry.
+- **Restarts** are normal. Committed turns survive; an in-flight model request is retried as a failed attempt (pi-durable bounds repeated failures).
+- **Data** lives in the Session Durable Object's SQLite database. Deleting the object deletes the transcripts.
+- **Cost**: requests are sent with Claude Code's request shape, so they draw on subscription usage. This is unofficial and version-sensitive; see pi-black's README for the current protocol version.
+
+## Verify
+
+```sh
+pnpm check
+```
+
+Runs formatting, type generation, both typechecks, the workerd test suite, the production build, and a Wrangler deploy dry run. Tests never call a model provider: the harness tests use pi-ai's faux provider, and the provider test uses a capturing fetch.
+
+## Layout
+
+| Path                 | Owns                                                         |
+| -------------------- | ------------------------------------------------------------ |
+| `src/agent.ts`       | models, pi-black provider wiring, tools, default agent       |
+| `src/credentials.ts` | credential vault DO and the pi-ai `CredentialStore` adapter  |
+| `src/session.ts`     | one session's harness, storage, sockets, alarms              |
+| `src/index.ts`       | Worker routing, bearer-token gate                            |
+| `src/client/`        | React client, transcript view, activity panel                |
+| `test/`              | protocol, recovery, scheduling, multiplayer, provider wiring |
+
+## Credit
+
+Built on the official [`pi-durable-cloudflare`](https://github.com/earendil-works/pi-durable-cloudflare) example (MIT, © Earendil Works contributors) and on pi-black's Claude Code protocol work. The Claude Code OAuth client id and request conventions belong to Anthropic; this project is unaffiliated with Anthropic and with the upstream Pi project.

@@ -14,7 +14,7 @@ import {
 } from "@earendil-works/pi-durable";
 import { openDurableObjectSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/cloudflare";
 import { describe, expect, it } from "vitest";
-import { createChatHarnessOptions } from "../src/chat.ts";
+import { createChatHarnessOptions } from "../src/agent.ts";
 import { expectAlarm } from "./alarm.ts";
 import worker from "../src/index.ts";
 import { MAX_CLIENT_FRAME_CHARACTERS, queuedInputs } from "../src/protocol.ts";
@@ -446,7 +446,7 @@ describe("chat application", () => {
         entries: [],
         docs: {
           "pi.agent": {
-            model: { provider: "openai", modelId: "gpt-6-luna" },
+            model: { provider: "anthropic", modelId: "claude-sonnet-5-5" },
             thinkingLevel: "off",
             tools: ["get_weather", "schedule", "search_history"],
           },

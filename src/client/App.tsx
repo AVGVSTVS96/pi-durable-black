@@ -1,5 +1,6 @@
 import { type SubmitEvent, useState } from "react";
 import { ChatSession } from "./ChatSession.tsx";
+import { authHeaders } from "./auth.ts";
 import { loadUsername, MAX_USERNAME_CHARACTERS, saveUsername } from "./identity.ts";
 
 const sessionRoute = /^\/sessions\/([^/]+)\/?$/;
@@ -35,7 +36,12 @@ function LandingPage() {
     setError(undefined);
     try {
       saveUsername(username);
-      const response = await fetch("/api/sessions", { method: "POST" });
+      const response = await fetch("/api/sessions", {
+        method: "POST",
+        headers: authHeaders(),
+      });
+      if (response.status === 401)
+        throw new Error("This deployment needs an access token: open the link with ?token=…");
       if (!response.ok) throw new Error(`Session creation failed (${response.status})`);
       const result = (await response.json()) as { readonly url?: unknown };
       if (typeof result.url !== "string")
@@ -50,8 +56,8 @@ function LandingPage() {
   return (
     <main>
       <header>
-        <h1>pi-durable</h1>
-        <p>A minimal chat interface for durable conversations and forks.</p>
+        <h1>pi-durable-black</h1>
+        <p>Durable Claude conversations and forks, billed to a Claude subscription.</p>
       </header>
       <section aria-labelledby="create-session-heading">
         <h2 id="create-session-heading">Start a session</h2>

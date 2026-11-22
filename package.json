@@ -1,32 +1,35 @@
 {
-  "name": "pi-durable-cloudflare",
-  "version": "0.87.1",
+  "name": "pi-durable-black",
+  "version": "0.1.0",
   "private": true,
+  "description": "pi-durable on Cloudflare Durable Objects, with Claude subscription models through pi-black",
   "type": "module",
   "scripts": {
     "build": "pnpm clean && vite build",
     "clean": "shx rm -rf .wrangler dist",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "check": "oxfmt --check . && wrangler types --env-file .dev.vars.example --include-runtime false --check && tsc && tsc -p tsconfig.client.json && pnpm build && wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "types": "wrangler types --env-file .dev.vars.example --include-runtime false",
+    "check": "oxfmt --check . && wrangler types --env-file .dev.vars.example --include-runtime false --check && tsc && tsc -p tsconfig.client.json && pnpm test && pnpm build && wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "deploy": "pnpm build && wrangler deploy",
     "dev": "vite",
     "preview": "vite preview",
     "test": "vitest --run"
   },
   "dependencies": {
-    "@earendil-works/chord": "1.5.2",
-    "@earendil-works/pi-ai": "1.5.2",
-    "@earendil-works/pi-durable": "1.5.2",
-    "@earendil-works/pi-schema": "1.5.2",
+    "@earendil-works/chord": "1.6.0",
+    "@earendil-works/pi-ai": "1.6.0",
+    "@earendil-works/pi-durable": "1.6.0",
+    "@earendil-works/pi-schema": "1.6.0",
     "partysocket": "1.3.0",
+    "pi-black": "github:AVGVSTVS96/pi-black#b7be50af0b78b535f4dd04772e58c2417341cddf",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.68.0",
-    "@cloudflare/vitest-plugin": "1.6.1",
-    "@cloudflare/workers-types": "5.20261109.1",
+    "@cloudflare/vite-plugin": "^1.70.1",
+    "@cloudflare/vitest-plugin": "1.9.0",
+    "@cloudflare/workers-types": "5.20261121.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
@@ -34,8 +37,8 @@
     "shx": "0.4.0",
     "typescript": "7.0.2",
     "vite": "^8.3.7",
-    "vitest": "5.1.0",
-    "wrangler": "4.159.0"
+    "vitest": "5.1.1",
+    "wrangler": "4.166.0"
   },
   "packageManager": "pnpm@11.15.1"
 }

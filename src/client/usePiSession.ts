@@ -10,6 +10,7 @@ import {
   type TaskGraph,
 } from "@earendil-works/pi-durable";
 import PartySocket from "partysocket";
+import { loadToken } from "./auth.ts";
 import {
   MAX_ENTRY_PAGE,
   MAX_PROMPT_CHARACTERS,
@@ -128,12 +129,13 @@ export function usePiSession(
     let terminal = false;
     let conversationOpened = false;
     let failureMessage = "The session connection failed.";
+    const token = loadToken();
     const socket = new PartySocket({
       host: window.location.host,
       party: "sessions",
       prefix: "api",
       room: sessionId,
-      query: { username },
+      query: token === undefined ? { username } : { username, token },
       maxEnqueuedMessages: 16,
       shouldReconnectOnClose: (event) => !terminal && !terminalProtocolClose(event.code),
     });

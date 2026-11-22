@@ -1,18 +1,26 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "pi-durable-cloudflare-do",
+  "name": "pi-durable-black",
   "main": "src/index.ts",
-  "compatibility_date": "2026-09-23",
+  "compatibility_date": "2026-11-21",
   "durable_objects": {
     "bindings": [
       {
         "name": "SESSIONS",
         "class_name": "Session",
       },
+      {
+        "name": "CREDENTIALS",
+        "class_name": "CredentialVault",
+      },
     ],
   },
   "exports": {
     "Session": {
+      "type": "durable-object",
+      "storage": "sqlite",
+    },
+    "CredentialVault": {
       "type": "durable-object",
       "storage": "sqlite",
     },

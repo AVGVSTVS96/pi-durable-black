@@ -1,1 +1,22 @@
-OPENAI_API_KEY=
+# Claude subscription OAuth token (starts with sk-ant-oat). Required for model calls.
+# Obtain it from a machine where Claude Code is signed in; never commit a real value.
+ANTHROPIC_OAUTH_TOKEN=
+
+# Refresh token from the same credentials file (claudeAiOauth.refreshToken).
+# With both values set the Worker refreshes the access token itself; with only
+# the access token, model calls stop when it expires.
+ANTHROPIC_OAUTH_REFRESH_TOKEN=
+
+# Optional plain API key fallback (billed per token, not subscription usage).
+ANTHROPIC_API_KEY=
+
+# Optional Claude Code identity metadata. Pi Black adds the matching request
+# metadata only when both are present; omitting them still works.
+CLAUDE_CODE_DEVICE_ID=
+CLAUDE_CODE_ACCOUNT_UUID=
+
+# Optional bearer token for /api/*. Leave empty behind Cloudflare Access.
+PI_DURABLE_TOKEN=
+
+# Optional Anthropic model id (default: claude-sonnet-5-5).
+PI_DURABLE_MODEL=
