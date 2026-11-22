@@ -102,4 +102,4 @@ Runs formatting, type generation, both typechecks, the workerd test suite, the p
 
 ## Credit
 
-Built on the official [`pi-durable-cloudflare`](https://github.com/earendil-works/pi-durable-cloudflare) example (MIT, © Earendil Works contributors) and on pi-black's Claude Code protocol work. The Claude Code OAuth client id and request conventions belong to Anthropic; this project is unaffiliated with Anthropic and with the upstream Pi project.
+Forked from the official [`pi-durable-cloudflare`](https://github.com/earendil-works/pi-durable-cloudflare) example (MIT, © Earendil Works contributors). Upstream changes merge with `git fetch upstream && git merge upstream/main`. and on pi-black's Claude Code protocol work. The Claude Code OAuth client id and request conventions belong to Anthropic; this project is unaffiliated with Anthropic and with the upstream Pi project.
